@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Incidents</title>
+    <script src="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.0.6/dist/leaflet.markercluster.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.0.6/dist/MarkerCluster.css"/>
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.0.6/dist/MarkerCluster.Default.css"/>
+</head>
+
+<body>
+    <h1>
+        5CCS2INS - Internet Systems <br> Coursework 3: HTML, XML and
+        JavaScript
+    </h1>
+
+    <h2>Traffic Incidents</h2>
+
+    <!--
+        A greeting message to the users and briefly let them know how
+        they can use the page.
+    -->
+    <p>Welcome to <i>Traffic Incidents</i>!</p>
+
+    <p>
+        This website is designed to display information on traffic within the 
+        city you choose below. This information consists of:
+        <ul>
+            <li>Incidents</li>
+            <li>Construction</li>
+            <li>Events</li>
+            <li>Congestion</li>
+        </ul>
+        All of this will then be displayed in the map below. You will also
+        find a small description of each of these incidents below. 
+    </p>
+
+    <!--
+        The drop-down list to select the city of which he/she wants to see 
+        traffic incidents for.
+    -->
+    <form action="#" method="get">
+        <label for="city">
+            Please select the city of which you want to see traffic
+            incidents for:
+        </label>
+        <select name="city" id="city">
+            <option value="New York">New York, USA</option>
+            <option value="Los Angeles">Los Angeles, USA</option>
+            <option value="Chicago">Chicago, USA</option>
+            <option value="Seattle">Seattle, USA</option>
+            <option value="Louisville">Louisville, USA</option>
+        </select>
+        <button type="button" onclick="getCityInfo()">See Incidents</button>
+    </form>
+    <br>
+
+    <!-- The map will be displayed in this div -->
+    <div id="map" style="width: 100%; height: 530px;"></div>
+
+    <!-- The incidents of each city will be displayed in this div -->
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+
+    <script>
+        /* The following code is from https://developer.mapquest.com/
+        to set up the map. */
+        L.mapquest.key = 'EetyQ0fMd2IUvnjpKH1GzmqV4ARJGCWA';
+        var baseLayer = L.mapquest.tileLayer('map');
+        // L.mapquest.geocoding().geocode(['New York, NY'], showMap);
+        var map = L.mapquest.map('map', {
+            center: L.latLng(40.71, -74.0),
+            layers: baseLayer,
+            zoom: 14
+        });
+
+        function addLayerControl(map) {
+            L.control.layers({
+                'Map': L.mapquest.tileLayer('map'),
+                'Satellite': L.mapquest.tileLayer('satellite'),
+                'Hybrid': L.mapquest.tileLayer('hybrid'),
+                'Light': L.mapquest.tileLayer('light'),
+                'Dark': baseLayer
+            }, {}, {position: 'topleft'}).addTo(map);
+        }
+
+        function seeIncidents(place) {
+            // Dictionary of coordinates: Array[lat, lng]
+            var coords = {
+                "New York": [40.71, -74.00],
+                "Los Angeles": [34.05, -118.24],
+                "Chicago": [41.85, -87.65],
+                "Seattle": [47.60, -122.33],
+                "Louisville": [38.89, -77.03]
+            };
+            var lat1 = coords[place][0]-0.22 + ",";
+            var lng1 = coords[place][1]-0.22 + ",";
+            var lat2 = coords[place][0]+0.22 + ",";
+            var lng2 = coords[place][1]+0.22;
+            var key = "EetyQ0fMd2IUvnjpKH1GzmqV4ARJGCWA";
+            var url = "http://www.mapquestapi.com/traffic/v2/incidents?key=" + key 
+                    + "&boundingBox=" + lat1 + lng1 + lat2 + lng2 
+                    + "&filters=incidents,construction,event,congestion";
+            asynchronousCall(url);
+            
+        }
+
+        // Make an asynchronous call to MapQuestAPI
+        function asynchronousCall(url) {
+            var addressPoints = [];
+            var markers = L.markerClusterGroup();
+            const xhttp = new XMLHttpRequest();
+            xhttp.open('GET', url);
+            xhttp.onload = () => {
+                var obj = JSON.parse(xhttp.response);
+                var size = obj["incidents"].length;
+                var td = "";
+                if (size >= 0) {
+                    for (var i=1; i < size+1; i++) {
+                        td += "<tr><td>" + i + "</td>" 
+                            + "<td>" + obj["incidents"][i-1]["shortDesc"] + "</td></tr>";
+                        var points = [obj["incidents"][i-1]["lat"], obj["incidents"][i-1]["lng"], i-1];
+                        addressPoints.push(points);
+                    }
+
+                    for (var i=0; i < addressPoints.length; i++) {
+                        var addressPoint = addressPoints[i];
+                        var title = addressPoint[2];
+                        var marker = L.marker(new L.LatLng(addressPoint[0], addressPoint[1]), {
+                            title: title,
+                            icon: L.mapquest.icons.marker()
+                        });
+                        marker.bindPopup(title);
+                        markers.addLayer(marker);
+                    }
+
+                    map.addLayer(markers);
+                    document.getElementById("tbody").innerHTML = td;
+                } else {
+                    td += "<td>There are no incidents in the city chosen.</td>";
+                    document.getElementById("tbody").innerHTML = td;
+                }
+            };
+            xhttp.send();
+        }
+
+        function getCityInfo() {
+            seeIncidents(document.getElementById("city").value);
+        }
+    </script>
+</body>
+
+</html>
